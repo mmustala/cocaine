@@ -16,19 +16,32 @@ module Cocaine
       end
 
       def call(command, env = {}, options = {})
-        input, output = IO.pipe
-        options[:out] = output
+        stdoutin, stdoutout = IO.pipe
+        stderrin, stderrout = IO.pipe
+        options[:out] = stdoutout
+        options[:err] = stderrout
         with_modified_environment(env) do
           pid = spawn(env, command, options)
-          output.close
-          result = input.read
+          stdoutout.close
+          stderrout.close
+          stdout = read_stream(stdoutin)
+          stderr = read_stream(stderrin)
           waitpid(pid)
-          input.close
-          result
+          stdoutin.close
+          stderrin.close
+          Output.new(stdout, stderr)
         end
       end
 
       private
+
+      def read_stream(io)
+        result = ""
+        while partial_result = io.read(8192)
+          result << partial_result
+        end
+        result
+      end
 
       def spawn(*args)
         Process.spawn(*args)

@@ -144,24 +144,38 @@ describe Cocaine::CommandLine do
     cmd.command.should == "convert a.jpg b.png 2>NUL"
   end
 
-  it "runs the command it's given and return the output" do
-    cmd = Cocaine::CommandLine.new("convert", "a.jpg b.png", :swallow_stderr => false)
-    cmd.stubs(:execute).with("convert a.jpg b.png").returns(:correct_value)
-    with_exitstatus_returning(0) do
-      cmd.run.should == :correct_value
-    end
+  it "runs the command it's given and returns the output" do
+    cmd = Cocaine::CommandLine.new("echo", "hello", :swallow_stderr => false)
+    expect(cmd.run).to eq "hello\n"
   end
 
-  it "detects that the system is unix" do
+  it "runs the command it's given and allows access to stdout afterwards" do
+    cmd = Cocaine::CommandLine.new("echo", "hello", :swallow_stderr => false)
+    cmd.run
+    expect(cmd.command_output).to eq "hello\n"
+  end
+
+  it "runs the command it's given and allows access to stderr afterwards" do
+    cmd = Cocaine::CommandLine.new(
+      "ruby",
+      "-e '$stdout.puts %{hello}; $stderr.puts %{goodbye}'",
+      :swallow_stderr => false
+    )
+    cmd.run
+    expect(cmd.command_output).to eq "hello\n"
+    expect(cmd.command_error_output).to eq "goodbye\n"
+  end
+
+  it "detects if the system is unix" do
     Cocaine::CommandLine.new("convert").should be_unix
   end
 
-  it "detects that the system is windows" do
+  it "detects if the system is windows" do
     on_windows!
     Cocaine::CommandLine.new("convert").should_not be_unix
   end
 
-  it "detects that the system is windows (mingw)" do
+  it "detects if the system is windows (mingw)" do
     on_mingw!
     Cocaine::CommandLine.new("convert").should_not be_unix
   end
